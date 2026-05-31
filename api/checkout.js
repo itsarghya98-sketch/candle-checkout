@@ -1,12 +1,10 @@
 const Razorpay = require("razorpay");
 
 module.exports = async (req, res) => {
-    // Allow requests from your Framer site
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
     res.setHeader("Access-Control-Allow-Headers", "Content-Type");
 
-    // Handle preflight request
     if (req.method === "OPTIONS") {
         return res.status(200).end();
     }
@@ -20,13 +18,27 @@ module.exports = async (req, res) => {
         key_secret: process.env.RAZORPAY_KEY_SECRET,
     });
 
-    const { amount } = req.body;
+    const { amount, cart } = req.body;
 
     const order = await razorpay.orders.create({
         amount: Math.round(amount * 100),
         currency: "INR",
         receipt: "receipt_" + Date.now(),
+        notes: {
+            cart_items: JSON.stringify(cart)
+        }
     });
 
-    res.status(200).json({ orderId: order.id });
+    const paymentLink = await razorpay.paymentLink.create({
+        amount: Math.round(amount * 100),
+        currency: "INR",
+        description: "Candle Order",
+        callback_url: "https://arghyascandle.framer.media/thank-you",
+        callback_method: "get",
+        notes: {
+            cart_items: JSON.stringify(cart)
+        }
+    });
+
+    res.status(200).json({ url: paymentLink.short_url });
 };
